@@ -37,3 +37,4 @@ echo "PORT=$port" >> .env
 echo "INTERVAL_MINUTES=$intervalMinutes" >> .env
 
 echo "The .env file has been created."
+node notion_automation.js
