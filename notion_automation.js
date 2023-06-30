@@ -242,4 +242,4 @@ if (summarizationApi === 'openai') {
      app.listen(port, () => {
           console.log(`App listening at http://localhost:${port}`);
      });
- node notion_automation.js
+
