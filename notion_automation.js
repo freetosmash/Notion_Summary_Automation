@@ -235,12 +235,11 @@ else if (summarizationApi === 'azure') {
 
     return 'Notion pages updated with summaries';
 }
-    app.get('/', async (req, res) => {
-        const result = await handleRequest();
-        res.send(result);
-    });
+app.get('/', async (req, res) => {
+    const result = await handleRequest();
+    res.send(result);
+});
 
-     app.listen(port, () => {
-          console.log(`App listening at http://localhost:${port}`);
-     });
-
+app.listen(port, () => {
+    console.log(`App listening at http://localhost:${port}`);
+});
