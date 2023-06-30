@@ -156,7 +156,8 @@ if (summarizationApi === 'openai') {
             console.error('Error occurred while generating summary:', error);
         }
     }
-} else if (summarizationApi === 'azure') {
+} 
+else if (summarizationApi === 'azure') {
     // 使用Azure API生成摘要
     const azureApiBase = process.env.AZURE_API_BASE;
     const azureApiVersion = process.env.AZURE_API_VERSION;
