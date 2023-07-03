@@ -176,24 +176,19 @@ else if (summarizationApi === 'azure') {
     // 使用Azure API生成摘要
     const azureApiBase = process.env.AZURE_API_BASE;
     const azureApiVersion = process.env.AZURE_API_VERSION;
+    const deploymentName = process.env.DEPLOYMENT_NAME;  // 新增的环境变量
 
     for (let chunk of chunks) {
         try {
-            const azureResponse = await fetch(`${azureApiBase}/v1/chat/completions`, {
+            const azureResponse = await fetch(`${azureApiBase}/openai/deployments/${deploymentName}/completions?api-version=${azureApiVersion}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${openaiApiKey}`,  
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    deployment_id: 'gpt-3.5-turbo',
-                    messages: [{
-                        role: 'system',
-                        content: `You are an experienced writer, skilled at summarizing textual content. Now, you need help summarizing the content of each Notion page accurately, and providing a summary of less than 100 Chinese characters, which should be outputted to the Summary column. Then you should fill in the Tag column with suitable tag(s).`
-                    }, {
-                        role: 'user',
-                        content: `Summarize the following text: ${chunk}`
-                    }]
+                    prompt: `Summarize the following text: ${chunk}`,
+                    max_tokens: 100
                 })
             });
 
@@ -202,75 +197,69 @@ else if (summarizationApi === 'azure') {
             }
 
             const azureData = await azureResponse.json();
-            const summaryGenerated = azureData.choices[0].message.content;
+            const summaryGenerated = azureData.choices[0].text;
 
             summaries.push(summaryGenerated);
         } catch (error) {
             console.error('Error occurred while generating summary:', error);
         }
     }
-} else {
+}else {
     console.error(`Invalid summarization API: ${summarizationApi}`);
 }
 
         // Combine all summaries into one
         let finalSummary = summaries.join(' ');
-// Send finalSummary to OpenAI for another summarization
-            const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-    headers: {
-                    'Authorization': `Bearer ${openaiApiKey}`,  
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [{
-            role: 'system',
-            content: `You are an experienced writer, skilled at summarizing textual content. Now, you need help summarizing the content of each Notion page accurately, and providing a summary of 100-120 Chinese characters, which should be outputted to the Summary column.`
-        }, {
-            role: 'user',
-            content: `Summarize the following text: ${finalSummary}`
-        }]
-    })
-            });
 
-            if (!openaiResponse.ok) {
-                throw new Error(`OpenAI API responded with status code ${openaiResponse.status}`);
+            if (summarizationApi === 'openai') {
+                // Send finalSummary to OpenAI for another summarization
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,  
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: 'gpt-3.5-turbo',
+            messages: [{
+                role: 'system',
+                content: `You are an experienced writer, skilled at summarizing textual content. Now, you need help summarizing the content of each Notion page accurately, and providing a summary of 100-120 Chinese characters, which should be outputted to the Summary column.`
+            }, {
+                role: 'user',
+                content: `Summarize the following text: ${finalSummary}`
+            }]
+        })
+    });
+
+    if (!openaiResponse.ok) {
+        throw new Error(`OpenAI API responded with status code ${openaiResponse.status}`);
+    }
+
+    const openaiData = await openaiResponse.json();
+    finalSummary = openaiData.choices[0].message.content;
+            } else if (summarizationApi === 'azure') {
+                // Send finalSummary to Azure for another summarization
+    const azureResponse = await fetch(`${azureApiBase}/openai/deployments/${deploymentName}/completions?api-version=${azureApiVersion}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,  
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            prompt: `Summarize the following text: ${finalSummary}`,
+            max_tokens: 120
+        })
+    });
+
+    if (!azureResponse.ok) {
+        throw new Error(`Azure API responded with status code ${azureResponse.status}`);
+    }
+
+    const azureData = await azureResponse.json();
+    finalSummary = azureData.choices[0].text;
+            } else {
+                console.error(`Invalid summarization API: ${summarizationApi}`);
             }
-
-            const openaiData = await openaiResponse.json();
-            finalSummary = openaiData.choices[0].message.content;
-            
-        try {
-            // Update the Notion page with the final summary
-            const updateResponse = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Authorization': `Bearer ${notionApiKey}`,
-                    'Notion-Version': '2022-06-28',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    properties: {
-                        'Summary': {
-                            'rich_text': [
-                                {
-                                    'text': {
-                                        'content': finalSummary
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                })
-            });
-
-            if (!updateResponse.ok) {
-                console.error(`Notion API responded with status code ${updateResponse.status} when updating page ${pageId}`);
-            }
-        } catch (error) {
-            console.error('Error occurred while generating summary or updating page:', error);
-        }
     }
 }
     return 'Notion pages updated with summaries';
