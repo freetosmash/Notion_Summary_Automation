@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: '/root/Notion_Summary_Automation/.env' });
 const express = require('express');
 const fetch = require('node-fetch');
 const { Client } = require('@notionhq/client');
@@ -18,7 +18,8 @@ async function getAllBlocks(blockId, notion) {
     let blocks = [];
     let hasMore = true;
     let startCursor = undefined;
-
+    let textContent = '';  // 将 textContent 定义在这里
+    
     while (hasMore) {
         const response = await notion.blocks.children.list({
             block_id: blockId,
@@ -35,7 +36,14 @@ async function getAllBlocks(blockId, notion) {
         startCursor = response.next_cursor;
     }
 
-    let textContent = blocks.map(getTextFromBlock).join(' ');
+    for (const block of blocks) {
+        console.log('Processing block:', block);  // 打印正在处理的块
+        try {
+            textContent += getTextFromBlock(block);  // 将提取的文本添加到 textContent 的末尾
+        } catch (error) {
+            console.error('Error occurred while processing block:', error);  // 打印出错误信息
+        }
+    }
     return textContent;
 }
 
@@ -82,14 +90,19 @@ function getTextFromBlock(block) {
         for (let textElement of block.quote.text) {
             textContent += textElement.plain_text;
         }
+    } else if (block.type === 'callout' && block.callout.rich_text) {
+        for (let textElement of block.callout.rich_text) {
+            textContent += textElement.plain_text;
+        }
     }
+    
     console.log('Extracted text:', textContent);
     return textContent;
 }
 
 async function handleRequest() {
     const notion = new Client({ auth: notionApiKey });
-
+    let summaries = [];  // 添加这一行来定义 summaries
     for (const databaseId of databaseIds) {
         // Fetch the list of pages in the Notion database
         const notionResponse = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
@@ -103,10 +116,12 @@ async function handleRequest() {
         });
 
         const notionData = await notionResponse.json();
+        console.log(notionData);  // 打印 notionData
         // Iterate over each page in the database
         for (const page of notionData.results) {
-        const pageId = page.id;
-        const summary = page.properties.Summary.rich_text[0]?.text.content;
+            let summaries = [];  // Clear the summaries array and define it here
+            const pageId = page.id;
+            const summary = page.properties.Summary.rich_text[0]?.text.content;
 
         // If the Summary cell already has content, skip this page
         if (summary) {
@@ -136,7 +151,7 @@ if (summarizationApi === 'openai') {
                     model: 'gpt-3.5-turbo',
                     messages: [{
                         role: 'system',
-                        content: `You are an experienced writer, skilled at summarizing textual content. Now, you need help summarizing the content of each Notion page accurately, and providing a summary of 100-120 Chinese characters, which should be outputted to the Summary column.`
+                        content: `You are an experienced writer, skilled at summarizing textual content. Now, you need help summarizing the content of each Notion page accurately, and providing a summary of less than 100 Chinese characters, which should be outputted to the Summary column. Then you should fill in the Tag column with suitable tag(s).`
                     }, {
                         role: 'user',
                         content: `Summarize the following text: ${chunk}`
@@ -156,7 +171,7 @@ if (summarizationApi === 'openai') {
             console.error('Error occurred while generating summary:', error);
         }
     }
-} 
+}
 else if (summarizationApi === 'azure') {
     // 使用Azure API生成摘要
     const azureApiBase = process.env.AZURE_API_BASE;
@@ -174,7 +189,7 @@ else if (summarizationApi === 'azure') {
                     deployment_id: 'gpt-3.5-turbo',
                     messages: [{
                         role: 'system',
-                        content: `You are an experienced writer, skilled at summarizing textual content. Now, you need help summarizing the content of each Notion page accurately, and providing a summary of 100-120 Chinese characters, which should be outputted to the Summary column.`
+                        content: `You are an experienced writer, skilled at summarizing textual content. Now, you need help summarizing the content of each Notion page accurately, and providing a summary of less than 100 Chinese characters, which should be outputted to the Summary column. Then you should fill in the Tag column with suitable tag(s).`
                     }, {
                         role: 'user',
                         content: `Summarize the following text: ${chunk}`
@@ -200,7 +215,32 @@ else if (summarizationApi === 'azure') {
 
         // Combine all summaries into one
         let finalSummary = summaries.join(' ');
+// Send finalSummary to OpenAI for another summarization
+            const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+    headers: {
+                    'Authorization': `Bearer ${openaiApiKey}`,  
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [{
+            role: 'system',
+            content: `You are an experienced writer, skilled at summarizing textual content. Now, you need help summarizing the content of each Notion page accurately, and providing a summary of 100-120 Chinese characters, which should be outputted to the Summary column.`
+        }, {
+            role: 'user',
+            content: `Summarize the following text: ${finalSummary}`
+        }]
+    })
+            });
 
+            if (!openaiResponse.ok) {
+                throw new Error(`OpenAI API responded with status code ${openaiResponse.status}`);
+            }
+
+            const openaiData = await openaiResponse.json();
+            finalSummary = openaiData.choices[0].message.content;
+            
         try {
             // Update the Notion page with the final summary
             const updateResponse = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
@@ -232,14 +272,16 @@ else if (summarizationApi === 'azure') {
             console.error('Error occurred while generating summary or updating page:', error);
         }
     }
-
-    return 'Notion pages updated with summaries';
 }
-app.get('/', async (req, res) => {
-    const result = await handleRequest();
-    res.send(result);
-});
+    return 'Notion pages updated with summaries';
+}  
+  handleRequest().then(result => console.log(result));  // 立即执行一次
 
-app.listen(port, () => {
-    console.log(`App listening at http://localhost:${port}`);
-});
+  setInterval(async function() {
+    const result = await handleRequest();
+    console.log(result);
+    }, 15 * 60 * 1000);  // 然后每15分钟执行一次
+
+    app.listen(port, () => {
+        console.log(`App listening at http://localhost:${port}`);
+    });
