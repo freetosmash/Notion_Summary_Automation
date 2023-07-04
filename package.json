@@ -1,0 +1,16 @@
+{
+  "name": "notion-summary-automation",
+  "version": "1.0.0",
+  "description": "Automatically generate summaries for Notion pages",
+  "main": "notion_automation.js",
+  "scripts": {
+    "start": "node notion_automation.js"
+  },
+  "dependencies": {
+    "@azure/openai": "^1.0.0",
+    "@notionhq/client": "^0.4.0",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "node-fetch": "^2.6.6"
+  }
+}
