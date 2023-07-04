@@ -1,16 +1,23 @@
 {
-  "name": "notion-summary-automation",
+  "name": "notion_summary_automation",
   "version": "1.0.0",
-  "description": "Automatically generate summaries for Notion pages",
+  "description": "A script to automate summarizing Notion pages",
   "main": "notion_automation.js",
   "scripts": {
     "start": "node notion_automation.js"
   },
+  "keywords": [
+    "notion",
+    "automation",
+    "summary"
+  ],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "@azure/openai": "^1.0.0",
-    "@notionhq/client": "^0.4.0",
-    "dotenv": "^10.0.0",
-    "express": "^4.17.1",
-    "node-fetch": "^2.6.6"
+    "@azure/openai": "*",
+    "@notionhq/client": "*",
+    "dotenv": "*",
+    "express": "*",
+    "node-fetch": "*"
   }
 }

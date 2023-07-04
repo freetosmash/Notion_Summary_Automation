@@ -16,7 +16,6 @@ const intervalMinutes = process.env.INTERVAL_MINUTES || 30;
 const azureApiBase = process.env.AZURE_API_BASE;
 const azureApiVersion = process.env.AZURE_API_VERSION;
 const deploymentName = process.env.AZURE_DEPLOYMENT_NAME;  // 新增的环境变量
-const intervalMinutes = process.env.INTERVAL_MINUTES || 30;
 
 // 创建 Azure OpenAI 客户端
 const azureClient = new OpenAIClient(azureApiBase, new AzureKeyCredential(openaiApiKey));
