@@ -18,6 +18,6 @@
     "@notionhq/client": "*",
     "dotenv": "*",
     "express": "*",
-    "node-fetch": "*"
+    "node-fetch": "^2.6.6"
   }
 }

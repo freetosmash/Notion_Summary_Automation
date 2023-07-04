@@ -3,7 +3,7 @@
 curl https://raw.githubusercontent.com/freetosmash/Notion_Summary_Automation/main/notion_automation.js -o notion_automation.js
 
 read -p "Enter your Notion API key: " notionApiKey
-read -p "Enter your OpenAI API key: " openaiApiKey
+read -p "Enter your OpenAI/Azure OpenAI API key: " openaiApiKey
 read -p "Enter the summarization API (openai or azure): " summarizationApi
 echo "Enter the database IDs (press enter when finished):"
 databaseIds=""
