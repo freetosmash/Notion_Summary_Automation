@@ -4,7 +4,13 @@ curl https://raw.githubusercontent.com/freetosmash/Notion_Summary_Automation/mai
 
 read -p "Enter your Notion API key: " notionApiKey
 read -p "Enter your OpenAI/Azure OpenAI API key: " openaiApiKey
-read -p "Enter the summarization API (openai or azure): " summarizationApi
+echo "Enter the summarization API (1 for azure, 2 for openai): "
+read summarizationApi
+if [ "$summarizationApi" == "1" ]; then
+    summarizationApi="azure"
+else
+    summarizationApi="openai"
+fi
 echo "Enter the database IDs (press enter when finished):"
 databaseIds=""
 while true; do
@@ -23,6 +29,7 @@ echo "OPENAI_API_KEY=$openaiApiKey" >> .env
 echo "DATABASE_IDS=$databaseIds" >> .env
 echo "PORT=${port:-3000}" >> .env
 echo "INTERVAL_MINUTES=${intervalMinutes:-30}" >> .env
+echo "SUMMARIZATION_API=$summarizationApi" >> .env
 
 if [ "$summarizationApi" == "azure" ]; then
     read -p "Enter your Azure API base URL: " azureApiBase
