@@ -16,6 +16,7 @@ const intervalMinutes = process.env.INTERVAL_MINUTES || 30;
 const azureApiBase = process.env.AZURE_API_BASE;
 const azureApiVersion = process.env.AZURE_API_VERSION;
 const deploymentName = process.env.AZURE_DEPLOYMENT_NAME;  // 新增的环境变量
+const intervalMinutes = process.env.INTERVAL_MINUTES || 30;
 
 // 创建 Azure OpenAI 客户端
 const azureClient = new OpenAIClient(azureApiBase, new AzureKeyCredential(openaiApiKey));
@@ -284,7 +285,7 @@ handleRequest().then(result => console.log(result));  // 立即执行一次
 setInterval(async function() {
     const result = await handleRequest();
     console.log(result);
-}, intervalMinutes * 60 * 1000);  // 使用环境变量设置的间隔时间
+    }, intervalMinutes * 60 * 1000);  // 使用环境变量设置的间隔时间
 
 app.listen(port, () => {
     console.log(`App listening at http://localhost:${port}`);
