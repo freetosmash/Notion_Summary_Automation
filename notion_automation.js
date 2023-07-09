@@ -3,6 +3,8 @@ const express = require('express');
 const fetch = require('node-fetch');
 const { Client } = require('@notionhq/client');
 const { OpenAIClient, AzureKeyCredential } = require("@azure/openai");  // 引入 Azure OpenAI 客户端库
+const { encode, decode } = require('gpt-3-encoder');
+
 
 const app = express();
 
@@ -138,11 +140,16 @@ async function handleRequest() {
             // Fetch the content of the linked page
             let content = await getAllBlocks(pageId, notion);
 
-            // Split the content into chunks of 4000 characters
+            // Encode the content into tokens
+            let tokens = encode(content);
+            
+            // Split the content into chunks of 3000 characters
             let chunks = [];
-            for (let i = 0; i < content.length; i += 4000) {
-                chunks.push(content.slice(i, i + 4000));
+            for (let i = 0; i < tokens.length; i += 4000) {
+                chunks.push(tokens.slice(i, i + 4000));
             }
+            // Decode each chunk back into text for summarization
+            chunks = chunks.map(chunk => decode(chunk));
 if (summarizationApi === 'openai') {
     // 使用OpenAI API生成摘要
     for (let chunk of chunks) {
